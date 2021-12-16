@@ -7,7 +7,7 @@ from bokeh.models import (
     CDSView,
     HoverTool,
     CrosshairTool,
-    NumeralTickFormatter
+    NumeralTickFormatter,
 )
 from bokeh.plotting import figure, show
 
@@ -16,8 +16,9 @@ w = 0.5
 
 
 class plot:
-    def __init__(self, stock, data, volume=True):
+    def __init__(self, stock, data, kind="candlestick", volume=True):
         self._stock = stock
+        self._kind = kind
         self._volume = volume
         self._tools = "pan,xwheel_zoom,box_zoom,zoom_in,zoom_out,reset,save"
         self._linked_crosshair = CrosshairTool(dimensions="both")
@@ -44,61 +45,33 @@ class plot:
             mode="vline",
         )
         self._p = []
-        self._plot(data)
+        self._process_data(data)
+        self._plot()
 
-    def _plot(self, data):
+    def _process_data(self, data):
         data["index1"] = data.index
-        source = ColumnDataSource(data)
-        inc = source.data["Close"] > source.data["Open"]
-        dec = source.data["Open"] > source.data["Close"]
-        view_inc = CDSView(source=source, filters=[BooleanFilter(inc)])
-        view_dec = CDSView(source=source, filters=[BooleanFilter(dec)])
-
-        options = dict(x_axis_type="datetime", plot_width=1000)
-        major_label_overrides = {
+        self._source = ColumnDataSource(data)
+        inc = self._source.data["Close"] > self._source.data["Open"]
+        dec = self._source.data["Open"] > self._source.data["Close"]
+        self._view_inc = CDSView(source=self._source, filters=[BooleanFilter(inc)])
+        self._view_dec = CDSView(source=self._source, filters=[BooleanFilter(dec)])
+        self._view = CDSView(source=self._source)
+        self._options = dict(x_axis_type="datetime", plot_width=1000)
+        self._major_label_overrides = {
             i: date.strftime("%b %d")
-            for i, date in enumerate(pd.to_datetime(source.data["Date"]))
+            for i, date in enumerate(pd.to_datetime(self._source.data["Date"]))
         }
-        segment = dict(x0="index1", x1="index1", y0="Low", y1="High", color="black")
-
-        p1 = figure(plot_height=400, title=self._stock, tools=self._tools, **options)
-        p1.xaxis.major_label_overrides = major_label_overrides
-        p1.grid.grid_line_alpha = self._grid_line_alpha
-
-        p1.segment(
-            **segment, source=source
+        self._segment = dict(
+            x0="index1", x1="index1", y0="Low", y1="High", color="black"
         )
 
-        vbar_options = dict(
-            x="index1",
-            width=w,
-            top="Open",
-            bottom="Close",
-            line_color="black",
-            source=source,
-        )
-
-        t1 = p1.vbar(fill_color="green", view=view_inc, **vbar_options)
-        t2 = p1.vbar(fill_color="red", view=view_dec, **vbar_options)
-
-        p1.add_tools(
-            HoverTool(
-                renderers=[t1, t2],
-                **self._tool_tips,
-            ),
-            self._linked_crosshair,
-        )
-        p1.add_tools(self._linked_crosshair)
-        self._p.append(p1)
-
+    def _volume_plot(self):
         if self._volume:
-            p2 = figure(x_range=p1.x_range, plot_height=100, **options)
-            p2.xaxis.major_label_overrides = major_label_overrides
-            p2.grid.grid_line_alpha = self._grid_line_alpha
+            p = figure(x_range=self._p[0].x_range, plot_height=100, **self._options)
+            p.xaxis.major_label_overrides = self._major_label_overrides
+            p.grid.grid_line_alpha = self._grid_line_alpha
 
-            p2.segment(
-                **segment, source=source
-            )
+            p.segment(**self._segment, source=self._source)
 
             vbar_options = dict(
                 x="index1",
@@ -106,23 +79,80 @@ class plot:
                 top="Volume",
                 bottom=0,
                 line_color="black",
-                source=source,
+                source=self._source,
             )
 
-            t1 = p2.vbar(fill_color="green", view=view_inc, **vbar_options)
-            t2 = p2.vbar(fill_color="red", view=view_dec, **vbar_options)
+            t1 = p.vbar(fill_color="green", view=self._view_inc, **vbar_options)
+            t2 = p.vbar(fill_color="red", view=self._view_dec, **vbar_options)
 
-            p2.add_tools(
+            p.add_tools(
                 HoverTool(
                     renderers=[t1, t2],
                     **self._tool_tips,
                 ),
                 self._linked_crosshair,
             )
-            p2.yaxis.formatter = NumeralTickFormatter(format='0.0a')
-            self._p.append(p2)
-        
+            p.yaxis.formatter = NumeralTickFormatter(format="0.0a")
+            self._p.append(p)
 
+    def _candlestick_plot(self):
+        p = figure(
+            plot_height=400, title=self._stock, tools=self._tools, **self._options
+        )
+        p.xaxis.major_label_overrides = self._major_label_overrides
+        p.grid.grid_line_alpha = self._grid_line_alpha
+
+        p.segment(**self._segment, source=self._source)
+
+        vbar_options = dict(
+            x="index1",
+            width=w,
+            top="Open",
+            bottom="Close",
+            line_color="black",
+            source=self._source,
+        )
+
+        t1 = p.vbar(fill_color="green", view=self._view_inc, **vbar_options)
+        t2 = p.vbar(fill_color="red", view=self._view_dec, **vbar_options)
+
+        p.add_tools(
+            HoverTool(
+                renderers=[t1, t2],
+                **self._tool_tips,
+            ),
+            self._linked_crosshair,
+        )
+        p.add_tools(self._linked_crosshair)
+        self._p.append(p)
+
+    def _line_plot(self):
+        p = figure(
+            plot_height=400, title=self._stock, tools=self._tools, **self._options
+        )
+        p.xaxis.major_label_overrides = self._major_label_overrides
+        p.grid.grid_line_alpha = self._grid_line_alpha
+
+        l = p.line(x="index1", y="Close", source=self._source)
+        p.add_tools(
+            HoverTool(
+                renderers=[l],
+                **self._tool_tips,
+            ),
+            self._linked_crosshair,
+        )
+        p.add_tools(self._linked_crosshair)
+        self._p.append(p)
+
+    def _plot(self):
+        if self._kind == "candlestick":
+            self._candlestick_plot()
+        elif self._kind == "line":
+            self._line_plot()
+        else:
+            raise ValueError("Please choose from the following: candlestock, line")
+
+        self._volume_plot()
 
     def show(self):
         show(column(self._p))
