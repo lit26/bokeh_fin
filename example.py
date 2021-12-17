@@ -19,10 +19,11 @@ data['EMA12'] = EMAIndicator(
 
 addplot = [dict(
     column='EMA9',
-    kind='line'
+    kind='line',
+    color='red',
 ), dict(
     column='EMA12',
-    kind='line'
+    kind='scatter',
 )]
 
 

@@ -99,17 +99,34 @@ class plot:
 
             p.yaxis.formatter = NumeralTickFormatter(format="0.0a")
             self._p.append(p)
+
+    def _format_style(self, plot, **kwargs):
+        styles = {}
+        if plot == 'line':
+            styles['color'] = kwargs['color'] if 'color' in kwargs else 'black'
+            styles['line_width'] = kwargs['line_width'] if 'line_width' in kwargs else 1
+            styles['alpha'] = kwargs['alpha'] if 'alpha' in kwargs else 1
+        elif plot == 'scatter':
+            styles['color'] = kwargs['color'] if 'color' in kwargs else 'black'
+            styles['size'] = kwargs['size'] if 'size' in kwargs else 3
+            styles['alpha'] = kwargs['alpha'] if 'alpha' in kwargs else 1
+        
+        return styles
+
     
-    def _add_mainplot(self, p):
+    def _add_mainplot(self, p ):
         if not self._addplot:
             return []
         ind_tooltip = []
         for ind in self._addplot:
             if ind['kind'] == 'line':
-                p.line(x="index1", y=ind['column'], source=self._source)
-                ind_tooltip.append((ind['column'], f"@{ind['column']}"))
+                p.line(x="index1",
+                        y=ind['column'],source=self._source, **self._format_style('line', **ind))
+            elif ind['kind'] == 'scatter':
+                p.scatter(x="index1", y=ind['column'], source=self._source, **self._format_style('scatter', **ind))
+            ind_tooltip.append((ind['column'], f"@{ind['column']}"))
+            
         return ind_tooltip
-
 
     def _candlestick_plot(self):
         p = figure(
