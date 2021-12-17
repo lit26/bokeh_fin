@@ -3,6 +3,7 @@ import yfinance as yf
 from bokeh.layouts import column
 from bokeh.models import (
     BooleanFilter,
+    CustomJS,
     ColumnDataSource,
     CDSView,
     HoverTool,
@@ -10,8 +11,13 @@ from bokeh.models import (
     NumeralTickFormatter,
 )
 from bokeh.plotting import figure, show
+import os
 
 w = 0.5
+
+with open(os.path.join(os.path.dirname(__file__), 'autoscale_cb.js'),
+          encoding='utf-8') as _f:
+    _AUTOSCALE_JS_CALLBACK = _f.read()
 
 class plot:
     def __init__(self, 
@@ -163,7 +169,14 @@ class plot:
             ind_tooltip.append((ind['column'], f"@{ind['column']}"))
             
         return ind_tooltip
-
+    
+    def _auto_scale(self, p):
+        custom_js_args = dict(ohlc_range=p.y_range,
+                          source=self._source)
+        p.x_range.js_on_change('end', CustomJS(args=custom_js_args,
+                                                  code=_AUTOSCALE_JS_CALLBACK))
+        return p
+    
     def _candlestick_plot(self):
         p = figure(
             plot_height=self._main_plot_height, title=self._stock, tools=self._tools, **self._options
@@ -194,6 +207,7 @@ class plot:
             ),
             self._linked_crosshair,
         )
+        self._auto_scale(p)
         self._p.append(p)
 
     def _line_plot(self):
@@ -214,6 +228,7 @@ class plot:
             ),
             self._linked_crosshair,
         )
+        self._auto_scale(p)
         self._p.append(p)
 
     def _plot(self):
