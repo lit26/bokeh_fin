@@ -16,15 +16,21 @@ w = 0.5
 
 
 class plot:
-    def __init__(self, stock, data, kind="candlestick", volume=True):
+    def __init__(self, stock, data, kind="candlestick", volume=True, addplot=None):
         self._stock = stock
         self._kind = kind
         self._volume = volume
+        self._addplot = addplot
         self._tools = "pan,xwheel_zoom,box_zoom,zoom_in,zoom_out,reset,save"
         self._linked_crosshair = CrosshairTool(dimensions="both")
         self._grid_line_alpha = 0.3
+        self._p = []
+        self._process_data(data)
+        self._plot()
+    
+    def _format_tooltips(self, custom):
         NBSP = "\N{NBSP}" * 4
-        self._tool_tips = dict(
+        tool_tips = dict(
             point_policy="follow_mouse",
             tooltips=[
                 ("Date", "@Date{%F}"),
@@ -40,13 +46,11 @@ class plot:
                     ),
                 ),
                 ("Volume", "@Volume{0,0.0[0000]}"),
-            ],
+            ] + custom,
             formatters={"@Date": "datetime"},
             mode="vline",
         )
-        self._p = []
-        self._process_data(data)
-        self._plot()
+        return tool_tips
 
     def _process_data(self, data):
         data["index1"] = data.index
@@ -88,12 +92,24 @@ class plot:
             p.add_tools(
                 HoverTool(
                     renderers=[t1, t2],
-                    **self._tool_tips,
-                ),
-                self._linked_crosshair,
+                    **self._format_tooltips([]),
+                )
             )
+            p.add_tools(self._linked_crosshair)
+
             p.yaxis.formatter = NumeralTickFormatter(format="0.0a")
             self._p.append(p)
+    
+    def _add_mainplot(self, p):
+        if not self._addplot:
+            return []
+        ind_tooltip = []
+        for ind in self._addplot:
+            if ind['kind'] == 'line':
+                p.line(x="index1", y=ind['column'], source=self._source)
+                ind_tooltip.append((ind['column'], f"@{ind['column']}"))
+        return ind_tooltip
+
 
     def _candlestick_plot(self):
         p = figure(
@@ -116,14 +132,15 @@ class plot:
         t1 = p.vbar(fill_color="green", view=self._view_inc, **vbar_options)
         t2 = p.vbar(fill_color="red", view=self._view_dec, **vbar_options)
 
+        ind_tooltip = self._add_mainplot(p)
+
         p.add_tools(
             HoverTool(
-                renderers=[t1, t2],
-                **self._tool_tips,
+                renderers=[t1,t2],
+                **self._format_tooltips(ind_tooltip),
             ),
             self._linked_crosshair,
         )
-        p.add_tools(self._linked_crosshair)
         self._p.append(p)
 
     def _line_plot(self):
@@ -134,14 +151,16 @@ class plot:
         p.grid.grid_line_alpha = self._grid_line_alpha
 
         l = p.line(x="index1", y="Close", source=self._source)
+
+        ind_tooltip = self._add_mainplot(p)
+
         p.add_tools(
             HoverTool(
                 renderers=[l],
-                **self._tool_tips,
+                **self._format_tooltips(ind_tooltip),
             ),
             self._linked_crosshair,
         )
-        p.add_tools(self._linked_crosshair)
         self._p.append(p)
 
     def _plot(self):
