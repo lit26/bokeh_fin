@@ -2,6 +2,7 @@ import yfinance as yf
 import bokeh_fin as bf
 import pandas as pd
 from ta.trend import EMAIndicator
+from ta.momentum import RSIIndicator
 
 stock = "AAPL"
 
@@ -16,6 +17,7 @@ data['EMA9'] = EMAIndicator(
         close=data['Close'], window=9).ema_indicator()
 data['EMA12'] = EMAIndicator(
         close=data['Close'], window=12).ema_indicator()
+data['RSI'] = RSIIndicator(close=data['Close'], window=14).rsi()
 
 addplot = [dict(
     column='EMA9',
@@ -24,8 +26,15 @@ addplot = [dict(
 ), dict(
     column='EMA12',
     kind='scatter',
+    color='blue'
+)]
+
+subplot = [dict(
+    column='RSI',
+    kind='line',
 )]
 
 
 bfp = bf.plot(stock, data, addplot=addplot)
+bfp.add_subplot(subplot)
 bfp.show()
