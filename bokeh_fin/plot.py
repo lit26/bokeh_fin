@@ -23,14 +23,26 @@ class plot:
     def __init__(self, 
                 stock, 
                 data, 
+                date='Date',
+                open='Open', 
+                high="High", 
+                low="Low", 
+                close="Close", 
+                volume="Volume", 
                 kind="candlestick", 
-                volume=True, 
+                show_volume=True, 
                 addplot=None,
                 main_plot_height=400,
                 volume_plot_height=100):
         self._stock = stock
-        self._kind = kind
+        self._date = date
+        self._open = open
+        self._high = high
+        self._low = low
+        self._close = close
         self._volume = volume
+        self._kind = kind
+        self._show_volume = show_volume
         self._addplot = addplot
         self._main_plot_height = main_plot_height
         self._volume_plot_height = volume_plot_height
@@ -97,22 +109,22 @@ class plot:
     def _process_data(self, data):
         data["index1"] = data.index
         self._source = ColumnDataSource(data)
-        inc = self._source.data["Close"] > self._source.data["Open"]
-        dec = self._source.data["Open"] > self._source.data["Close"]
+        inc = self._source.data[self._close] > self._source.data[self._open]
+        dec = self._source.data[self._open] > self._source.data[self._close]
         self._view_inc = CDSView(source=self._source, filters=[BooleanFilter(inc)])
         self._view_dec = CDSView(source=self._source, filters=[BooleanFilter(dec)])
         self._view = CDSView(source=self._source)
         self._options = dict(x_axis_type="datetime", plot_width=1000)
         self._major_label_overrides = {
             i: date.strftime("%b %d")
-            for i, date in enumerate(pd.to_datetime(self._source.data["Date"]))
+            for i, date in enumerate(pd.to_datetime(self._source.data[self._date]))
         }
         self._segment = dict(
-            x0="index1", x1="index1", y0="Low", y1="High", color="black"
+            x0="index1", x1="index1", y0=self._low, y1=self._high, color="black"
         )
 
     def _volume_plot(self):
-        if self._volume:
+        if self._show_volume:
             p = figure(x_range=self._p[0].x_range, plot_height=self._volume_plot_height, **self._options)
             p.xaxis.major_label_overrides = self._major_label_overrides
             p.grid.grid_line_alpha = self._grid_line_alpha
@@ -120,7 +132,7 @@ class plot:
             vbar_options = dict(
                 x="index1",
                 width=w,
-                top="Volume",
+                top=self._volume,
                 bottom=0,
                 line_color="black",
                 source=self._source,
@@ -150,6 +162,7 @@ class plot:
             styles['color'] = kwargs['color'] if 'color' in kwargs else 'black'
             styles['size'] = kwargs['size'] if 'size' in kwargs else 3
             styles['alpha'] = kwargs['alpha'] if 'alpha' in kwargs else 1
+            styles['marker'] = kwargs['marker'] if 'marker' in kwargs else 'dot'
         
         return styles
 
@@ -189,8 +202,8 @@ class plot:
         vbar_options = dict(
             x="index1",
             width=w,
-            top="Open",
-            bottom="Close",
+            top=self._open,
+            bottom=self._close,
             line_color="black",
             source=self._source,
         )
@@ -217,7 +230,7 @@ class plot:
         p.xaxis.major_label_overrides = self._major_label_overrides
         p.grid.grid_line_alpha = self._grid_line_alpha
 
-        l = p.line(x="index1", y="Close", source=self._source)
+        l = p.line(x="index1", y=self._close, source=self._source)
 
         ind_tooltip = self._add_mainplot(p)
 
