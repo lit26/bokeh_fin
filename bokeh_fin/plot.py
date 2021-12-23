@@ -13,6 +13,7 @@ from bokeh.models import (
 from bokeh.plotting import figure, show
 import os
 
+INDEX_COL = 'index1'
 w = 0.5
 
 with open(os.path.join(os.path.dirname(__file__), 'autoscale_cb.js'),
@@ -62,12 +63,12 @@ class plot:
         ind_tooltip = []
         for ind in subplot:
             if ind['kind'] == 'line':
-                l = p.line(x="index1",
+                l = p.line(x=INDEX_COL,
                         y=ind['column'],source=self._source, **self._format_style('line', **ind))
                 ind_line.append(l)
                 ind_tooltip.append((ind['column'], f"@{ind['column']}"))
             elif ind['kind'] == 'scatter':
-                s = p.scatter(x="index1", y=ind['column'], source=self._source, **self._format_style('scatter', **ind))
+                s = p.scatter(x=INDEX_COL, y=ind['column'], source=self._source, **self._format_style('scatter', **ind))
                 ind_line.append(s)
                 ind_tooltip.append((ind['column'], f"@{ind['column']}"))
             else:
@@ -107,7 +108,7 @@ class plot:
         return tool_tips
 
     def _process_data(self, data):
-        data["index1"] = data.index
+        data[INDEX_COL] = data.index
         self._source = ColumnDataSource(data)
         inc = self._source.data[self._close] > self._source.data[self._open]
         dec = self._source.data[self._open] > self._source.data[self._close]
@@ -120,7 +121,7 @@ class plot:
             for i, date in enumerate(pd.to_datetime(self._source.data[self._date]))
         }
         self._segment = dict(
-            x0="index1", x1="index1", y0=self._low, y1=self._high, color="black"
+            x0=INDEX_COL, x1=INDEX_COL, y0=self._low, y1=self._high, color="black"
         )
 
     def _volume_plot(self):
@@ -130,7 +131,7 @@ class plot:
             p.grid.grid_line_alpha = self._grid_line_alpha
 
             vbar_options = dict(
-                x="index1",
+                x=INDEX_COL,
                 width=w,
                 top=self._volume,
                 bottom=0,
@@ -173,10 +174,10 @@ class plot:
         ind_tooltip = []
         for ind in self._addplot:
             if ind['kind'] == 'line':
-                p.line(x="index1",
+                p.line(x=INDEX_COL,
                         y=ind['column'],source=self._source, **self._format_style('line', **ind))
             elif ind['kind'] == 'scatter':
-                p.scatter(x="index1", y=ind['column'], source=self._source, **self._format_style('scatter', **ind))
+                p.scatter(x=INDEX_COL, y=ind['column'], source=self._source, **self._format_style('scatter', **ind))
             else:
                 raise ValueError("Other kinds are not supported.")
             ind_tooltip.append((ind['column'], f"@{ind['column']}"))
@@ -200,7 +201,7 @@ class plot:
         p.segment(**self._segment, source=self._source)
 
         vbar_options = dict(
-            x="index1",
+            x=INDEX_COL,
             width=w,
             top=self._open,
             bottom=self._close,
@@ -230,7 +231,7 @@ class plot:
         p.xaxis.major_label_overrides = self._major_label_overrides
         p.grid.grid_line_alpha = self._grid_line_alpha
 
-        l = p.line(x="index1", y=self._close, source=self._source)
+        l = p.line(x=INDEX_COL, y=self._close, source=self._source)
 
         ind_tooltip = self._add_mainplot(p)
 
