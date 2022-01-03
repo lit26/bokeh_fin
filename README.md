@@ -13,3 +13,7 @@ data.reset_index(inplace=True)
 bfp = bf.plot(stock, data)
 bfp.show()
 ```
+
+## Demo
+
+![example](asset/example.png)
